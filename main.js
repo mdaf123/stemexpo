@@ -70,7 +70,7 @@ const textureUniformLocation = gl.getUniformLocation(program, 'u_texture');
 const texScaleLocation = gl.getUniformLocation(program, 'u_texScale');
 
 // Load texture function
-function loadTexture(gl, url, callback) {
+function loadTexture(gl, url, callback, flipY = false) {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     // Placeholder magenta
@@ -78,6 +78,9 @@ function loadTexture(gl, url, callback) {
     const image = new Image();
     image.onload = () => {
         gl.bindTexture(gl.TEXTURE_2D, texture);
+        if (flipY) {
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        }
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
         gl.generateMipmap(gl.TEXTURE_2D);
         callback(image.width, image.height);
@@ -91,20 +94,21 @@ let grassWidth = 64, grassHeight = 64; // default
 const grassTexture = loadTexture(gl, 'media/tile-grass.png', (w, h) => {
     grassWidth = w;
     grassHeight = h;
-});
+}, true); // flip Y for grass
 
 let fieldWidth = 100, fieldHeight = 100; // default
 const fieldTexture = loadTexture(gl, 'media/field.png', (w, h) => {
     fieldWidth = w;
     fieldHeight = h;
-    objectHeight = objectWidth * (h / w);
-});
+    objectWidth = (w / canvas.width) * 2;
+    objectHeight = (h / canvas.height) * 2;
+}, false); // no flip for field
 
 // Object properties
 let objectX = 0;
 let objectY = 0;
-let objectWidth = 0.2;
-let objectHeight = 0.2;
+let objectWidth = 0.2; // default
+let objectHeight = 0.2; // default
 
 // Buffers
 const positionBuffer = gl.createBuffer();
@@ -167,6 +171,9 @@ function render() {
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.useProgram(program);
 
