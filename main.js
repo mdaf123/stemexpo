@@ -119,7 +119,7 @@ const iconX = -1 + gridSizeX / 2 + iconCol * gridSizeX;
 const iconY = -1 + gridSizeY / 2 + iconRow * gridSizeY;
 
 // Fields
-let fields = [{ x: -1 + gridSizeX / 2, y: -1 + gridSizeY / 2 }]; // start with one
+let fields = []; // start with one
 let occupied = new Set(); // col,row
 
 // Object size (tile size)
