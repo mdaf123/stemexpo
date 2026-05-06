@@ -100,15 +100,31 @@ let fieldWidth = 100, fieldHeight = 100; // default
 const fieldTexture = loadTexture(gl, 'media/field.png', (w, h) => {
     fieldWidth = w;
     fieldHeight = h;
-    objectWidth = (w / canvas.width) * 2;
-    objectHeight = (h / canvas.height) * 2;
+    // object size fixed to tile size
 }, false); // no flip for field
 
-// Object properties
-let objectX = 0;
-let objectY = 0;
-let objectWidth = 0.2; // default
-let objectHeight = 0.2; // default
+// Grid properties
+const gridCols = 16;
+const gridRows = 9;
+const gridSizeX = 2 / gridCols; // 0.125
+const gridSizeY = 2 / gridRows; // ~0.222
+
+// Tray properties
+const trayCols = [14, 15];
+
+// Icon properties (in tray, at col 14, row 4)
+const iconCol = 14;
+const iconRow = 4;
+const iconX = -1 + gridSizeX / 2 + iconCol * gridSizeX;
+const iconY = -1 + gridSizeY / 2 + iconRow * gridSizeY;
+
+// Fields
+let fields = [{ x: -1 + gridSizeX / 2, y: -1 + gridSizeY / 2 }]; // start with one
+let occupied = new Set(); // col,row
+
+// Object size (tile size)
+const objectWidth = gridSizeX;
+const objectHeight = gridSizeY;
 
 // Buffers
 const positionBuffer = gl.createBuffer();
@@ -124,12 +140,29 @@ const objectTexCoordBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, objectTexCoordBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
 
+// Helper functions
+function getCol(x) { return Math.round((x + 1) / gridSizeX - 0.5); }
+function getRow(y) { return Math.round((y + 1) / gridSizeY - 0.5); }
+function getKey(col, row) { return `${col},${row}`; }
+function isInTray(col) { return trayCols.includes(col); }
+function snapToCenter(x, y) {
+    const offsetX = -1 + gridSizeX / 2;
+    const offsetY = -1 + gridSizeY / 2;
+    const snappedX = offsetX + Math.round((x - offsetX) / gridSizeX) * gridSizeX;
+    const snappedY = offsetY + Math.round((y - offsetY) / gridSizeY) * gridSizeY;
+    return { x: snappedX, y: snappedY };
+}
+
 // Mouse handling
-let dragging = false;
+let draggingFieldIndex = -1;
+let draggingIcon = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+let originalKey = '';
+let moved = false;
 
 canvas.addEventListener('mousedown', (e) => {
+    moved = false;
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -137,16 +170,35 @@ canvas.addEventListener('mousedown', (e) => {
     const displayedHeight = rect.height;
     const glX = (mouseX / displayedWidth) * 2 - 1;
     const glY = 1 - (mouseY / displayedHeight) * 2;
-    if (glX >= objectX - objectWidth / 2 && glX <= objectX + objectWidth / 2 &&
-        glY >= objectY - objectHeight / 2 && glY <= objectY + objectHeight / 2) {
-        dragging = true;
-        dragOffsetX = glX - objectX;
-        dragOffsetY = glY - objectY;
+
+    // Check fields
+    for (let i = 0; i < fields.length; i++) {
+        const f = fields[i];
+        if (glX >= f.x - objectWidth / 2 && glX <= f.x + objectWidth / 2 &&
+            glY >= f.y - objectHeight / 2 && glY <= f.y + objectHeight / 2) {
+            draggingFieldIndex = i;
+            dragOffsetX = glX - f.x;
+            dragOffsetY = glY - f.y;
+            originalKey = getKey(getCol(f.x), getRow(f.y));
+            return;
+        }
+    }
+
+    // Check icon
+    if (glX >= iconX - objectWidth / 2 && glX <= iconX + objectWidth / 2 &&
+        glY >= iconY - objectHeight / 2 && glY <= iconY + objectHeight / 2) {
+        draggingIcon = true;
+        tempField = { x: glX, y: glY };
+        dragOffsetX = 0; // since temp starts at mouse
+        dragOffsetY = 0;
     }
 });
 
+let tempField = null;
+
 canvas.addEventListener('mousemove', (e) => {
-    if (dragging) {
+    if (draggingFieldIndex >= 0) {
+        moved = true;
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
@@ -154,13 +206,75 @@ canvas.addEventListener('mousemove', (e) => {
         const displayedHeight = rect.height;
         const glX = (mouseX / displayedWidth) * 2 - 1;
         const glY = 1 - (mouseY / displayedHeight) * 2;
-        objectX = glX - dragOffsetX;
-        objectY = glY - dragOffsetY;
+        fields[draggingFieldIndex].x = glX - dragOffsetX;
+        fields[draggingFieldIndex].y = glY - dragOffsetY;
+        // Clamp
+        fields[draggingFieldIndex].x = Math.max(-1 + objectWidth / 2, Math.min(1 - objectWidth / 2, fields[draggingFieldIndex].x));
+        fields[draggingFieldIndex].y = Math.max(-1 + objectHeight / 2, Math.min(1 - objectHeight / 2, fields[draggingFieldIndex].y));
+    } else if (draggingIcon && tempField) {
+        moved = true;
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const displayedWidth = rect.width;
+        const displayedHeight = rect.height;
+        const glX = (mouseX / displayedWidth) * 2 - 1;
+        const glY = 1 - (mouseY / displayedHeight) * 2;
+        tempField.x = glX - dragOffsetX;
+        tempField.y = glY - dragOffsetY;
+        // Clamp
+        tempField.x = Math.max(-1 + objectWidth / 2, Math.min(1 - objectWidth / 2, tempField.x));
+        tempField.y = Math.max(-1 + objectHeight / 2, Math.min(1 - objectHeight / 2, tempField.y));
     }
 });
 
 canvas.addEventListener('mouseup', () => {
-    dragging = false;
+    if (draggingFieldIndex >= 0) {
+        if (!moved) {
+            // Click to delete
+            const key = getKey(getCol(fields[draggingFieldIndex].x), getRow(fields[draggingFieldIndex].y));
+            occupied.delete(key);
+            fields.splice(draggingFieldIndex, 1);
+        } else {
+            // Drag end
+            const f = fields[draggingFieldIndex];
+            const snapped = snapToCenter(f.x, f.y);
+            const col = getCol(snapped.x);
+            const row = getRow(snapped.y);
+            const key = getKey(col, row);
+            if (isInTray(col)) {
+                occupied.delete(originalKey);
+                fields.splice(draggingFieldIndex, 1);
+            } else if (key !== originalKey && occupied.has(key)) {
+                // Revert to original position
+                const origCol = parseInt(originalKey.split(',')[0]);
+                const origRow = parseInt(originalKey.split(',')[1]);
+                f.x = -1 + gridSizeX / 2 + origCol * gridSizeX;
+                f.y = -1 + gridSizeY / 2 + origRow * gridSizeY;
+            } else {
+                if (key !== originalKey) {
+                    occupied.delete(originalKey);
+                    occupied.add(key);
+                }
+                f.x = snapped.x;
+                f.y = snapped.y;
+            }
+        }
+        draggingFieldIndex = -1;
+    } else if (draggingIcon && tempField) {
+        if (moved) {
+            const snapped = snapToCenter(tempField.x, tempField.y);
+            const col = getCol(snapped.x);
+            const row = getRow(snapped.y);
+            const key = getKey(col, row);
+            if (!isInTray(col) && !occupied.has(key)) {
+                fields.push({ x: snapped.x, y: snapped.y });
+                occupied.add(key);
+            }
+        }
+        draggingIcon = false;
+        tempField = null;
+    }
 });
 
 canvas.focus();
@@ -195,25 +309,57 @@ function render() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.uniform1i(textureUniformLocation, 0);
-    gl.uniform2f(texScaleLocation, canvas.width / grassWidth, canvas.height / grassHeight);
+    gl.uniform2f(texScaleLocation, gridCols, gridRows);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    // Draw object
-    const objectPositions = [
-        objectX - objectWidth / 2, objectY - objectHeight / 2,
-        objectX + objectWidth / 2, objectY - objectHeight / 2,
-        objectX - objectWidth / 2, objectY + objectHeight / 2,
-        objectX + objectWidth / 2, objectY + objectHeight / 2,
-    ];
-    gl.bindBuffer(gl.ARRAY_BUFFER, objectPositionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(objectPositions), gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, objectTexCoordBuffer);
-    gl.vertexAttribPointer(texCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    // Draw fields
     gl.bindTexture(gl.TEXTURE_2D, fieldTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.uniform2f(texScaleLocation, 1, 1);
+    for (const f of fields) {
+        const positions = [
+            f.x - objectWidth / 2, f.y - objectHeight / 2,
+            f.x + objectWidth / 2, f.y - objectHeight / 2,
+            f.x - objectWidth / 2, f.y + objectHeight / 2,
+            f.x + objectWidth / 2, f.y + objectHeight / 2,
+        ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, objectPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.DYNAMIC_DRAW);
+        gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, objectTexCoordBuffer);
+        gl.vertexAttribPointer(texCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // Draw tempField if dragging icon
+    if (draggingIcon && tempField) {
+        const positions = [
+            tempField.x - objectWidth / 2, tempField.y - objectHeight / 2,
+            tempField.x + objectWidth / 2, tempField.y - objectHeight / 2,
+            tempField.x - objectWidth / 2, tempField.y + objectHeight / 2,
+            tempField.x + objectWidth / 2, tempField.y + objectHeight / 2,
+        ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, objectPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.DYNAMIC_DRAW);
+        gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, objectTexCoordBuffer);
+        gl.vertexAttribPointer(texCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // Draw icon
+    const iconPositions = [
+        iconX - objectWidth / 2, iconY - objectHeight / 2,
+        iconX + objectWidth / 2, iconY - objectHeight / 2,
+        iconX - objectWidth / 2, iconY + objectHeight / 2,
+        iconX + objectWidth / 2, iconY + objectHeight / 2,
+    ];
+    gl.bindBuffer(gl.ARRAY_BUFFER, objectPositionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(iconPositions), gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, objectTexCoordBuffer);
+    gl.vertexAttribPointer(texCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     requestAnimationFrame(render);
