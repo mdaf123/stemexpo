@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garden Defense</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="game-container">
+
+  <!-- INTRO -->
+  <div id="intro-screen">
+    <h1>🌾 Garden Defense</h1>
+    <p class="sub">Keep your farm alive as long as you can, farmer!</p>
+    <div class="intro-controls">
+      <h3>Controls</h3>
+      <div class="ctrl-row"><span class="ctrl-key">W A S D</span> Move around the farm</div>
+      <div class="ctrl-row"><span class="ctrl-key">Mouse</span> Look around</div>
+      <div class="ctrl-row"><span class="ctrl-key">Click</span> Use selected tool / interact</div>
+      <div class="ctrl-row"><span class="ctrl-key">1-6</span> Select toolbar item</div>
+      <div class="ctrl-row"><span class="ctrl-key">E</span> Harvest / interact with crop</div>
+      <div class="ctrl-row"><span class="ctrl-key">B</span> Open/close shop</div>
+      <div class="ctrl-row"><span class="ctrl-key">Esc</span> Deselect tool</div>
+    </div>
+    <div class="intro-controls" style="font-size:13px;line-height:1.7">
+      <h3>How to Play</h3>
+      🌱 Plant seeds on soil patches → crops grow over time<br/>
+      🌿 Towers auto-attack enemies in range<br/>
+      🧂 Salt kills slugs &amp; snails on click<br/>
+      🌾 Harvest crops → sell at market for 💰<br/>
+      ⚠️ Droughts and tornadoes damage your farm<br/>
+      💀 Game over when you have no crops AND no money
+    </div>
+    <button id="start-btn">Start Farming!</button>
+  </div>
+
+  <!-- MAIN GAME CANVAS -->
+  <canvas id="game-canvas"></canvas>
+  <canvas id="rain-canvas"></canvas>
+
+  <!-- CROSSHAIR -->
+  <div id="crosshair"></div>
+
+  <!-- WEATHER OVERLAY -->
+  <div id="weather-overlay"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-badge">
+      <span class="icon">💰</span>
+      <span>Money:</span>
+      <span class="val" id="hud-money">$50</span>
+    </div>
+    <div class="hud-badge">
+      <span class="icon">🌾</span>
+      <span>Crops:</span>
+      <span class="val" id="hud-crops">0</span>
+    </div>
+    <div class="hud-badge">
+      <span class="icon">🧂</span>
+      <span>Salt:</span>
+      <span class="val" id="hud-salt">10</span>
+    </div>
+    <div class="hud-badge">
+      <span class="icon">⏱️</span>
+      <span>Day:</span>
+      <span class="val" id="hud-day">1</span>
+    </div>
+    <div id="wave-info">Wave: <span id="hud-wave">1</span></div>
+  </div>
+
+  <!-- INTERACT HINT -->
+  <div id="interact-hint">Press <b>E</b> to interact</div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <button class="tool-btn" data-tool="salt" data-key="1">
+      <span class="t-icon">🧂</span>
+      <span class="t-name">Salt</span>
+      <span class="t-cost">[1]</span>
+    </button>
+    <button class="tool-btn" data-tool="seed-carrot" data-key="2">
+      <span class="t-icon">🥕</span>
+      <span class="t-name">Carrot</span>
+      <span class="t-cost">[2] $5</span>
+    </button>
+    <button class="tool-btn" data-tool="seed-wheat" data-key="3">
+      <span class="t-icon">🌾</span>
+      <span class="t-name">Wheat</span>
+      <span class="t-cost">[3] $8</span>
+    </button>
+    <button class="tool-btn" data-tool="seed-pumpkin" data-key="4">
+      <span class="t-icon">🎃</span>
+      <span class="t-name">Pumpkin</span>
+      <span class="t-cost">[4] $15</span>
+    </button>
+    <button class="tool-btn" data-tool="tower-cactus" data-key="5">
+      <span class="t-icon">🌵</span>
+      <span class="t-name">Cactus</span>
+      <span class="t-cost">[5] $30</span>
+    </button>
+    <button class="tool-btn" data-tool="tower-sunflower" data-key="6">
+      <span class="t-icon">🌻</span>
+      <span class="t-name">Sunflower</span>
+      <span class="t-cost">[6] $50</span>
+    </button>
+    <button class="tool-btn" id="shop-toggle-btn">
+      <span class="t-icon">🏪</span>
+      <span class="t-name">Shop</span>
+      <span class="t-cost">[B]</span>
+    </button>
+  </div>
+
+  <!-- SHOP PANEL -->
+  <div id="shop-panel">
+    <h3>🛒 Market</h3>
+    <div class="shop-item" data-buy="salt">
+      <div><div class="si-name">🧂 Salt x5</div><div class="si-desc">Kill slugs & snails</div></div>
+      <div class="si-price">$10</div>
+    </div>
+    <div class="shop-item" data-buy="seed-carrot-bulk">
+      <div><div class="si-name">🥕 Carrot Seeds x3</div><div class="si-desc">Fast grow, sells $12</div></div>
+      <div class="si-price">$12</div>
+    </div>
+    <div class="shop-item" data-buy="seed-wheat-bulk">
+      <div><div class="si-name">🌾 Wheat Seeds x3</div><div class="si-desc">Medium grow, sells $20</div></div>
+      <div class="si-price">$20</div>
+    </div>
+    <div class="shop-item" data-buy="seed-pumpkin-bulk">
+      <div><div class="si-name">🎃 Pumpkin Seeds x2</div><div class="si-desc">Slow, high value $40</div></div>
+      <div class="si-price">$25</div>
+    </div>
+    <div class="shop-item" data-buy="tower-cactus">
+      <div><div class="si-name">🌵 Cactus Tower</div><div class="si-desc">Spines, good vs slugs</div></div>
+      <div class="si-price">$30</div>
+    </div>
+    <div class="shop-item" data-buy="tower-sunflower">
+      <div><div class="si-name">🌻 Sunflower Tower</div><div class="si-desc">Repels birds & thieves</div></div>
+      <div class="si-price">$50</div>
+    </div>
+    <div class="shop-item" data-buy="tower-rosebush">
+      <div><div class="si-name">🌹 Rose Bush Tower</div><div class="si-desc">Thorns, high damage</div></div>
+      <div class="si-price">$70</div>
+    </div>
+    <div class="shop-item" data-buy="upgrade-tower">
+      <div><div class="si-name">⬆️ Upgrade Tower</div><div class="si-desc">Upgrade nearest tower</div></div>
+      <div class="si-price">$60</div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div id="notifications"></div>
+
+  <!-- GAME OVER -->
+  <div id="game-over">
+    <h1>Farm Abandoned</h1>
+    <p class="go-sub">The farm has been overrun... you survived:</p>
+    <p class="go-score" id="go-score">Day 1</p>
+    <button id="restart-btn">Try Again</button>
+  </div>
+
+</div>
+<script src="game.js"></script>
+</body>
+</html>
