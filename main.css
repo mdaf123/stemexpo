@@ -4,7 +4,8 @@ canvas {
     max-height: 80vh;
 }
 html {
-    font-family: Pixls, "Courier New", monospace;
-    background-color: sienna;
-    color: white;
+    font-family: "Courier New", monospace;
+    background-color: tan;
+    color: black;
+    text-align: center;
 }
