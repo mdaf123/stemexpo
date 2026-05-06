@@ -312,6 +312,19 @@ function render() {
     gl.uniform2f(texScaleLocation, gridCols, gridRows);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+    // line vertical middle of screen, 5px solid black line
+    gl.uniform2f(texScaleLocation, 1, 1);
+    const linePositions = [
+        0, -1,
+        0, 1,
+    ];
+    gl.bindBuffer(gl.ARRAY_BUFFER, objectPositionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(linePositions), gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, objectTexCoordBuffer);
+    gl.vertexAttribPointer(texCoordAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.LINES, 0, 2);
+
     // Draw fields
     gl.bindTexture(gl.TEXTURE_2D, fieldTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
