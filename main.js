@@ -133,8 +133,10 @@ canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    const glX = (mouseX / canvas.width) * 2 - 1;
-    const glY = 1 - (mouseY / canvas.height) * 2;
+    const displayedWidth = rect.width;
+    const displayedHeight = rect.height;
+    const glX = (mouseX / displayedWidth) * 2 - 1;
+    const glY = 1 - (mouseY / displayedHeight) * 2;
     if (glX >= objectX - objectWidth / 2 && glX <= objectX + objectWidth / 2 &&
         glY >= objectY - objectHeight / 2 && glY <= objectY + objectHeight / 2) {
         dragging = true;
@@ -148,8 +150,10 @@ canvas.addEventListener('mousemove', (e) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        const glX = (mouseX / canvas.width) * 2 - 1;
-        const glY = 1 - (mouseY / canvas.height) * 2;
+        const displayedWidth = rect.width;
+        const displayedHeight = rect.height;
+        const glX = (mouseX / displayedWidth) * 2 - 1;
+        const glY = 1 - (mouseY / displayedHeight) * 2;
         objectX = glX - dragOffsetX;
         objectY = glY - dragOffsetY;
     }
