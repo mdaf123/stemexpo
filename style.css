@@ -374,4 +374,4 @@ body {
   opacity: 0;
   transition: opacity 0.5s;
 }
-#rain-canvas.active { opacity: 1; }
+#rain-canvas.active { opacity: 1; } 
