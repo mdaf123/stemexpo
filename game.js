@@ -1,7 +1,3 @@
-// ============================================================
-// GARDEN DEFENSE - First Person Shooter Style Movement
-// Like Muck - WASD movement, Mouse look, Smooth camera
-// ============================================================
 
 const canvas = document.getElementById('game-canvas');
 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
